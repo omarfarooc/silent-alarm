@@ -20,6 +20,30 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle b) {
         super.onCreate(b);
         p = Scheduler.prefs(this);
+
+        final Thread.UncaughtExceptionHandler old = Thread.getDefaultUncaughtExceptionHandler();
+        Thread.setDefaultUncaughtExceptionHandler((t, e) -> {
+            try {
+                java.io.StringWriter sw2 = new java.io.StringWriter();
+                e.printStackTrace(new java.io.PrintWriter(sw2));
+                p.edit().putString("crash", sw2.toString()).commit();
+            } catch (Throwable ignored) {}
+            if (old != null) old.uncaughtException(t, e);
+        });
+
+        String crash = p.getString("crash", null);
+        if (crash != null) {
+            p.edit().remove("crash").commit();
+            ScrollView sv = new ScrollView(this);
+            TextView tv = new TextView(this);
+            tv.setText("ERROR (screenshot bhejein):\n\n" + crash);
+            tv.setTextIsSelectable(true);
+            tv.setPadding(30, 30, 30, 30);
+            sv.addView(tv);
+            setContentView(sv);
+            return;
+        }
+
         int pad = (int) (20 * getResources().getDisplayMetrics().density);
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -55,7 +79,9 @@ public class MainActivity extends Activity {
         note.setPadding(0, pad, 0, 0);
         root.addView(note);
 
-        setContentView(root);
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(root);
+        setContentView(scroll);
 
         interval.setText(String.valueOf(p.getInt("interval", 10)));
         dur.setText(String.valueOf(p.getInt("dur", 5)));
